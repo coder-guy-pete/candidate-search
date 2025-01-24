@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios, { AxiosError } from 'axios';
 import { searchGithub, searchGithubUser } from '../api/API';
 import { Candidate } from '../interfaces/Candidate.interface';
 
@@ -17,33 +18,9 @@ const CandidateSearch: React.FC = () => {
     try {
       // Fetch candidates from Github
       const fetchedCandidates: Candidate[] = await searchGithub();
-
-      // Check if fetchedCandidates is an array of candidates
-      if (!fetchedCandidates || !Array.isArray(fetchedCandidates)) {
-        throw new Error("Invalid response from searchGithub API. Expected an array.");
-      }
-
-      fetchedCandidates.filter((candidate): candidate is Candidate => candidate.login !== null && candidate.html_url !== null); // Filter out null logins and html_urls
       const trimmedCandidates = fetchedCandidates.slice(0, MaxCandidates); // Limit the number of candidates to display
 
-      // Fetch detailed information for each candidate
-      const detailedCandidates = await Promise.all(
-        trimmedCandidates.map(async (candidate: Candidate) => {
-          try {
-            const detailedCandidate = await searchGithubUser(candidate.login);
-            return detailedCandidate;
-          } catch (error: any) { // Catch error with type any
-            if (error?.response?.status === 404) {
-              return null;
-            } else {
-              console.error(`Error fetching details for ${candidate.login}:`, error);
-            }
-            return null;
-          }
-        })
-      );
-
-      setCandidates(detailedCandidates.filter((candidate): candidate is Candidate => candidate !== null));
+      setCandidates(trimmedCandidates); // Set only basic candidate info initially
     } catch (error) {
       console.error('Error fetching candidates:', error);
       setError('Failed to load candidates. Please try again later.');
@@ -52,11 +29,31 @@ const CandidateSearch: React.FC = () => {
     }
   };
 
+  // Fetch detailed information for each candidate
+  const fetchDetailedCandidate = async (candidate: Candidate) => {
+    try {
+      const detailedCandidate = await searchGithubUser(candidate.login);
+      return detailedCandidate ;
+      } catch (error: unknown) {
+        if (axios.isAxiosError(error)) {
+          const axiosError = error as AxiosError;
+          if (axiosError.response?.status === 404) {
+            console.log(`Candidate ${candidate.login} not found. Skipping...`);
+            goToNextCandidate();
+            return null;
+          } else {
+            console.error('Error message:', axiosError.message);
+            return null;
+        }
+      }
+    }
+  };
+
   const handleAddCandidate = (candidate: Candidate) => {
     if (candidate) { // Check if candidate is not null
-      const newSavedCandidates = [...savedCandidates, candidate];
-      setSavedCandidates(newSavedCandidates);
-      localStorage.setItem('savedCandidates', JSON.stringify(newSavedCandidates));
+      const newSavedCandidate = [...savedCandidates, candidate];
+      setSavedCandidates(newSavedCandidate);
+      localStorage.setItem('savedCandidates', JSON.stringify(newSavedCandidate));
       goToNextCandidate();
     }
   };
@@ -65,9 +62,23 @@ const CandidateSearch: React.FC = () => {
     goToNextCandidate();
   };
 
-  const goToNextCandidate = () => {
+  const goToNextCandidate = async () => {
     if (currentCandidateIndex < candidates.length - 1) { // Only update index if there are more candidates
       setCurrentCandidateIndex((prevIndex) => prevIndex + 1);
+      const nextCandidate = candidates[currentCandidateIndex + 1];
+
+      // Fetch detailed information for the next candidate
+      if (nextCandidate.login !== null) {
+        const detailedCandidate = await fetchDetailedCandidate(nextCandidate);
+        if (detailedCandidate) {
+          setCandidates((prevCandidates) => 
+            prevCandidates.map((candidate, index) => (index === currentCandidateIndex + 1 ? detailedCandidate : candidate))
+          );
+        }
+      if (nextCandidate.login === null) {
+        goToNextCandidate();
+        }
+      }
     } else {
       setCandidates([]); // Clear candidates when no more are left
     }
