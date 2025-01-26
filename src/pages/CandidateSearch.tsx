@@ -8,6 +8,7 @@ const CandidateSearch: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [savedCandidates, setSavedCandidates] = useState<Candidate[]>([]);
+  const [hasFetchedDetails, setHasFetchedDetails] = useState<number | null>(null);
   const MaxCandidates = 10;
 
   const fetchCandidates = async () => {
@@ -84,7 +85,7 @@ const CandidateSearch: React.FC = () => {
 
   useEffect(() => {
     const fetchDetailedCurrentCandidate = async () => {
-      if (candidates.length > 0) {
+      if (candidates.length > 0 && hasFetchedDetails !== currentCandidateIndex) {
         const detailedCandidate = await fetchDetailedCandidate(candidates[currentCandidateIndex]);
         if (detailedCandidate) {
           setCandidates((prevCandidates) =>
@@ -93,11 +94,12 @@ const CandidateSearch: React.FC = () => {
             )
           );
         }
+        setHasFetchedDetails(currentCandidateIndex);
       }
     };
 
     fetchDetailedCurrentCandidate();
-  }, [candidates, currentCandidateIndex]);
+  }, [candidates, currentCandidateIndex, hasFetchedDetails]);
 
   const currentCandidate = candidates.length > 0 ? candidates[currentCandidateIndex] : null;
 
@@ -117,10 +119,10 @@ const CandidateSearch: React.FC = () => {
             <div className="card-content">
               <h3>{currentCandidate.name}</h3>
               <p>Username: {currentCandidate.login}</p>
-              <p>Location: {currentCandidate.location}</p>
+                <p>Location: {currentCandidate.location || 'N/A'}</p>
               <p>Email: {currentCandidate.email ? <a href={`mailto:${currentCandidate.email}`}>{currentCandidate.email}</a> : 'N/A'}</p>
-              <p>github: <a href={currentCandidate.html_url} target='_blank'>{currentCandidate.html_url}</a></p>
-              <p>Company: {currentCandidate.company}</p>
+              <p>github: <a href={currentCandidate.html_url || 'N/A'} target='_blank'>{currentCandidate.html_url}</a></p>
+              <p>Company: {currentCandidate.company || 'N/A'}</p>
             </div>
             <div className="actions">
               <button onClick={handleRemoveCandidate}>-</button>
