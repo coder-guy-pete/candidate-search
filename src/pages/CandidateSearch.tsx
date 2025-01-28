@@ -8,7 +8,6 @@ const CandidateSearch: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [savedCandidates, setSavedCandidates] = useState<Candidate[]>([]);
-  const [hasFetchedDetails, setHasFetchedDetails] = useState<number | null>(null);
   const [currentCandidate, setCurrentCandidate] = useState<Candidate | null>(null);
   const MaxCandidates = 10;
 
@@ -42,9 +41,13 @@ const CandidateSearch: React.FC = () => {
   const fetchDetailedCandidate = async (candidate: Candidate) => {
     try {
       const detailedCandidate = await searchGithubUser(candidate.login);
+
+      if (!detailedCandidate.login) {
+        goToNextCandidate();
+      }
+
       return detailedCandidate;
       } catch (error) {
-        goToNextCandidate();
         console.error('Error fetching detailed candidate:', error);
         return null;
       }
@@ -64,9 +67,11 @@ const CandidateSearch: React.FC = () => {
   };
 
   const goToNextCandidate = () => {
+    console.log('Go to next candidate');
     if (currentCandidateIndex < candidates.length - 1) { // Only update index if there are more candidates
       setCurrentCandidateIndex((prevIndex) => prevIndex + 1);
     } else {
+      console.log('No more candidates');
       setCandidates([]); // Clear candidates when no more are left
     }
   };
@@ -111,6 +116,8 @@ const CandidateSearch: React.FC = () => {
           <p>Loading candidate...</p>
         ) : error ? (
           <p className="error">{error}</p>
+        ) : candidates.length === 0 ? (
+          <p>There are no more candidates available. Please refresh the page to generate a new list of candidates.</p>
         ) : currentCandidate ? (
           <div key={currentCandidate.login} className="candidate-card">
             <img
@@ -129,8 +136,6 @@ const CandidateSearch: React.FC = () => {
               <button onClick={() => handleAddCandidate(currentCandidate)}>+</button>
             </div>
           </div>
-        ) : candidates.length === 0 ? (
-          <p>There are no more candidates available. Please refresh the page to generate a new list of candidates.</p>
         ) : (
           <p>No candidates found.</p>
         )}
