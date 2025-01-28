@@ -9,6 +9,7 @@ const CandidateSearch: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [savedCandidates, setSavedCandidates] = useState<Candidate[]>([]);
   const [hasFetchedDetails, setHasFetchedDetails] = useState<number | null>(null);
+  const [currentCandidate, setCurrentCandidate] = useState<Candidate | null>(null);
   const MaxCandidates = 10;
 
   const fetchCandidates = async () => {
@@ -28,6 +29,7 @@ const CandidateSearch: React.FC = () => {
       const trimmedCandidates = fetchedCandidates.slice(0, MaxCandidates); // Limit the number of candidates to display
 
       setCandidates(trimmedCandidates); // Set only basic candidate info initially
+      setCurrentCandidate(trimmedCandidates[0]); // Set the first candidate as the current candidate
     } catch (error) {
       console.error('Error fetching candidates:', error);
       setError('Failed to load candidates. Please try again later.');
@@ -40,8 +42,9 @@ const CandidateSearch: React.FC = () => {
   const fetchDetailedCandidate = async (candidate: Candidate) => {
     try {
       const detailedCandidate = await searchGithubUser(candidate.login);
-      return detailedCandidate ;
+      return detailedCandidate;
       } catch (error) {
+        goToNextCandidate();
         console.error('Error fetching detailed candidate:', error);
         return null;
       }
@@ -85,23 +88,20 @@ const CandidateSearch: React.FC = () => {
 
   useEffect(() => {
     const fetchDetailedCurrentCandidate = async () => {
-      if (candidates.length > 0 && hasFetchedDetails !== currentCandidateIndex) {
+      if (candidates.length > 0) {
         const detailedCandidate = await fetchDetailedCandidate(candidates[currentCandidateIndex]);
         if (detailedCandidate) {
-          setCandidates((prevCandidates) =>
-            prevCandidates.map((candidate, index) =>
-              index === currentCandidateIndex ? detailedCandidate : candidate
-            )
-          );
+          setCurrentCandidate(detailedCandidate);
         }
-        setHasFetchedDetails(currentCandidateIndex);
+        // setHasFetchedDetails(currentCandidateIndex);
       }
     };
 
     fetchDetailedCurrentCandidate();
-  }, [candidates, currentCandidateIndex, hasFetchedDetails]);
+    console.log(currentCandidate, currentCandidateIndex);
+  }, [currentCandidateIndex]);
 
-  const currentCandidate = candidates.length > 0 ? candidates[currentCandidateIndex] : null;
+  // const currentCandidate = candidates.length > 0 ? candidates[currentCandidateIndex] : null;
 
   return (
     <div className="candidate-search">
